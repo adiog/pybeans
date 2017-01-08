@@ -30,11 +30,9 @@ function(an_object, a_typoid)
 var issubclass =
 function(an_object, a_class)
 {
-    //console.log(an_object);
     ret = (an_object.__class__) &&
            (a_class.__class__) &&
            (an_object.__class__.indexOf(a_class.__class__.last()) != -1);
-    //console.log(ret);
     return ret;
 };
 
@@ -46,8 +44,6 @@ function(variant)
     this.__call__ =
     function(single_arg)
     {
-        //console.log(this.variant)
-        //console.log(single_arg);
         if (issubclass(this.variant, class_Typoid))
         {
             return this.variant.__call__(single_arg);
@@ -72,13 +68,6 @@ function(variant)
     function(an_object)
     {
         return this.variant.to_simple_data(an_object);
-/*
-            if isinstance(self.variant, Typoid):
-            return self.variant.to_simple_data(an_object)
-        elif issubclass(self.variant, Bean):
-            return self.variant.to_simple_data(an_object)
-        else:
-            raise RuntimeError()*/
     };
 
     this.is_optional =
@@ -135,15 +124,9 @@ var Register =
     fold_invoke:
     function(type_list)
     {
-        //console.log('yyyy');
-        //console.log(type_list);
         if (type_list.length == 1)
         {
-            //console.log(type_list);
-            //console.log(this.atoms);
             atom_class = this.atoms[type_list[0]].prototype.__class__;
-            //console.log(this.atoms['Int'].prototype);
-            //console.log(atom_class);
             if (atom_class.indexOf("Bean") != -1)
             {
                 return this.atoms[type_list[0]];
@@ -155,9 +138,6 @@ var Register =
         }
         else
         {
-            //console.log('xx');
-            ///console.log(this.atoms[type_list[0]]);
-            //console.log(this.atoms[type_list[0]].prototype.__class__);
             return new this.atoms[type_list[0]](new Atom(this.fold_invoke(type_list.slice(1))));
         }
     },
@@ -165,13 +145,9 @@ var Register =
     get:
     function(label)
     {
-        //console.log(label);
-        spl = this.split_to_list(label, []);
-        //console.log(spl);
-        //console.log("XXX");
-        ty = this.fold_invoke(spl);
-        //console.log(ty);
-        return new Atom(ty);
+        split_label = this.split_to_list(label, []);
+        atom_to_be_wrapped = this.fold_invoke(split_label);
+        return new Atom(atom_to_be_wrapped);
     }
 };
 
@@ -391,19 +367,12 @@ var class_List = public(class_Typoid,
     __init__:
     function(that, element_type)
     {
-        //console.log('<<aaa');
-        //console.log(that);
-        //console.log(element_type);
-        //console.log('aaa>>')
         that.element_type = element_type;
     },
 
     __call__:
     function(a_list)
     {
-        //console.log(this);
-        //console.log(a_list);
-        //console.log('zz');
         that = this;
         return a_list.map(function(an_element){return that.element_type.__call__(an_element);});
     },
@@ -418,9 +387,6 @@ var class_List = public(class_Typoid,
     to_simple_data:
     function(a_list)
     {
-        //console.log(this);
-        //console.log(a_list);
-        //console.log('zz');
         that = this;
         return a_list.map(function(an_element){return that.element_type.to_simple_data(an_element);});
     }
@@ -462,7 +428,8 @@ var class_Bean =
     function(simple_data)
     {
         return true;
-//        return set(simple_data.keys()).issubset(cls.get_spec().keys());
+        // FIXME TODO SEND NUDES
+        // return set(simple_data.keys()).issubset(cls.get_spec().keys());
     },
 
     is_instance_of:
