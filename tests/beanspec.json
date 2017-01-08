@@ -1,0 +1,5 @@
+{
+  "a_str": "Optional(String)",
+  "an_int": "Default(Int)",
+  "list_of_int": "Default(List(Int))"
+}
