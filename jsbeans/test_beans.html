@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test JsBeans</title>
+    <script src="jsbeans.js"></script>
+</head>
+<body>
+<script>
+
+        function assertEqual(a,b)
+        {
+
+            if (JSON.stringify(a)!=JSON.stringify(b))
+            {
+                alert('fail');
+            }
+        };
+
+        function assertThrow(callback, error)
+        {
+            try
+            {
+                callback();
+            }
+            catch (e)
+            {
+                if (e == error)
+                {
+                    return;
+                }
+            }
+            alert('fail');
+        }
+
+
+        // int
+
+        an_int_typoid = Register.get('Int');
+
+        an_int = an_int_typoid.__call__(15);
+
+        assertEqual(an_int, 15);
+
+        assertThrow(function() {an_int_typoid.__call__("15");}, "TypeError()");
+
+        assertEqual(an_int_typoid.to_simple_data(an_int), 15);
+
+
+        // string
+
+        a_string_typoid = Register.get('String');
+
+        a_string = a_string_typoid.__call__('15');
+
+        assertEqual(a_string, '15');
+
+        assertThrow(function() {a_string_typoid.__call__(15);}, "TypeError()");
+
+        assertEqual(a_string_typoid.to_simple_data(a_string), '15');
+
+
+        // list
+
+        a_list_typoid = Register.get('List(Int)');
+
+        a_list = a_list_typoid.__call__([1,2,3]);
+
+        assertEqual(a_list, [1,2,3]);
+
+        assertThrow(function() {a_list_typoid.__call__([1,2,'3']);}, "TypeError()");
+
+        assertEqual(a_list_typoid.to_simple_data(a_list), [1,2,3]);
+
+        // bean
+
+        var class_SampleBean = public(class_Bean,
+        {
+            get_default:
+            function(field)
+            {
+                if (field == 'a_def_int')
+                {
+                    return 541;
+                }
+                else
+                {
+                    throw "RuntimeError()";
+                }
+            }
+        });
+        register_bean_spec("SampleBean", class_SampleBean, '{"an_opt_int": "Optional(Int)", "a_def_int": "Default(Int)", "a_list": "List(Int)"}');
+
+        sample_bean = (Register.get("SampleBean")).__call__({"a_list": [1,5,9]});
+
+        assertEqual(sample_bean.an_opt_int, null);
+        assertEqual(sample_bean.a_def_int, 541);
+        assertEqual(sample_bean.a_list, [1,5,9]);
+
+
+        // nested bean
+
+        var class_BeanWithSampleBean = public(class_Bean,
+        {
+        });
+        register_bean_spec("BeanWithSampleBean", class_BeanWithSampleBean, '{"a_sub_bean": "SampleBean"}');
+
+        sample_bean_with_bean = (Register.get("BeanWithSampleBean")).__call__({"a_sub_bean": {"a_list": [1,5,9]}});
+
+        assertEqual(sample_bean_with_bean.a_sub_bean.an_opt_int, null);
+        assertEqual(sample_bean_with_bean.a_sub_bean.a_def_int, 541);
+        assertEqual(sample_bean_with_bean.a_sub_bean.a_list, [1,5,9]);
+
+</script>
+</body>
+</html>
