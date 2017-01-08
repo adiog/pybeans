@@ -58,7 +58,7 @@ class Register(object):
     atoms = {}
     specs = {}
 
-    basepath = os.environ.get('PYBEANS_BASEPATH', 'beans')
+    basepath = os.environ.get('PYBEANS_BASEPATH', '.')
 
     @staticmethod
     def split_to_list(label, type_list):
