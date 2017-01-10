@@ -111,6 +111,18 @@
         assertEqual(sample_bean_with_bean.a_sub_bean.a_def_int, 541);
         assertEqual(sample_bean_with_bean.a_sub_bean.a_list, [1,5,9]);
 
+        // minimal bean - do not care about defaults
+
+        var class_SampleMinimalBean = public(class_MinimalBean,
+        {
+        });
+        register_bean_spec("SampleMinimalBean", class_SampleBean, '{"an_opt_int": "Optional(Int)", "a_list": "List(Int)"}');
+
+        sample_minimal_bean = (Register.get("SampleMinimalBean")).__call__({"a_list": [1,5,9]});
+
+        assertEqual(sample_bean.an_opt_int, null);
+        assertEqual(sample_bean.a_list, [1,5,9]);
+
 </script>
 </body>
 </html>

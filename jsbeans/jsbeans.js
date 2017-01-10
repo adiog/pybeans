@@ -469,8 +469,14 @@ var class_Bean =
         spec = this.get_spec();
         for(k in spec)
         {
-            this[k] = this.cast_spec_field(k, spec[k], simple_data);
+            this.cast_spec_dict_assign_field(k, spec[k], simple_data);
         }
+    },
+
+    cast_spec_dict_assign_field:
+    function(field, field_spec, simple_data)
+    {
+        this[k] = this.cast_spec_field(k, spec[k], simple_data);
     },
 
     cast_spec_field:
@@ -522,3 +528,15 @@ var class_Bean =
         return this[this.__name__ + '_id'];
     }
 };
+
+var class_MinimalBean = public(class_Bean,
+{
+    cast_spec_dict_assign_field:
+    function(field, field_spec, simple_data)
+    {
+        if ((!field_spec.is_default()) || (field in simple_data))
+        {
+            this[k] = this.cast_spec_field(k, spec[k], simple_data);
+        }
+    }
+});
