@@ -73,11 +73,9 @@
         assertEqual(a_list_typoid.to_simple_data(a_list), [1,2,3]);
 
         // bean
-
-        var class_SampleBean = public(class_Bean,
+        class SampleBean extends Bean
         {
-            get_default:
-            function(field)
+            get_default(field)
             {
                 if (field == 'a_def_int')
                 {
@@ -88,11 +86,13 @@
                     throw "RuntimeError()";
                 }
             }
-        });
-        register_bean_spec("SampleBean", class_SampleBean, '{"an_opt_int": "Optional(Int)", "a_def_int": "Default(Int)", "a_list": "List(Int)"}');
-
-        sample_bean = (Register.get("SampleBean")).__call__({"a_list": [1,5,9]});
-
+        }
+        register_bean_spec("SampleBean", SampleBean, '{"an_opt_int": "Optional(Int)", "a_def_int": "Default(Int)", "a_list": "List(Int)"}');
+        sample_bean = (Register.get("SampleBean")).__call__(
+        {
+            "a_list": [1,5,9]
+        }
+        );
         assertEqual(sample_bean.an_opt_int, null);
         assertEqual(sample_bean.a_def_int, 541);
         assertEqual(sample_bean.a_list, [1,5,9]);
@@ -100,16 +100,26 @@
 
         // nested bean
 
-        var class_BeanWithSampleBean = public(class_Bean,
-        {
-        });
-        register_bean_spec("BeanWithSampleBean", class_BeanWithSampleBean, '{"a_sub_bean": "SampleBean"}');
+        class BeanWithSampleBean extends Bean {}
+        register_bean_spec("BeanWithSampleBean", BeanWithSampleBean, '{"a_sub_bean": "SampleBean"}');
 
         sample_bean_with_bean = (Register.get("BeanWithSampleBean")).__call__({"a_sub_bean": {"a_list": [1,5,9]}});
 
         assertEqual(sample_bean_with_bean.a_sub_bean.an_opt_int, null);
         assertEqual(sample_bean_with_bean.a_sub_bean.a_def_int, 541);
         assertEqual(sample_bean_with_bean.a_sub_bean.a_list, [1,5,9]);
+
+        // minimal bean - do not care about defaults
+
+        class SampleMinimalBean extends MinimalBean {}
+        register_bean_spec("SampleMinimalBean", SampleBean, '{"an_opt_int": "Optional(Int)", "a_list": "List(Int)"}');
+
+        sample_minimal_bean = (Register.get("SampleMinimalBean")).__call__({"a_list": [1,5,9]});
+
+        assertEqual(sample_bean.an_opt_int, null);
+        assertEqual(sample_bean.a_list, [1,5,9]);
+
+        console.log(sample_minimal_bean);
 
 </script>
 </body>
