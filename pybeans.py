@@ -11,35 +11,20 @@ import re
 import datetime
 
 
-class Atom(object):  # this class is created to highlight the difference in __call__
-    variant = None
+class Atom(object):
+    variant = None  # an instance of Typoid or a Bean class
 
     def __init__(self, variant):
-        if isinstance(variant, Typoid):
-            self.variant = variant
-        elif issubclass(variant, Bean):
-            self.variant = variant
-        else:
-            raise RuntimeError()
+        self.variant = variant
 
     def __call__(self, *args, **kwargs):
-        if isinstance(self.variant, Typoid):
-            return self.variant(*args, **kwargs)  # call to Typoid __call__
-        elif issubclass(self.variant, Bean):
-            return self.variant(*args, **kwargs)  # call to Bean constructor
-        else:
-            raise RuntimeError()
+        return self.variant(*args, **kwargs)
 
     def is_instance_of(self, an_object):
         return self.variant.is_instance_of(an_object)
 
     def to_simple_data(self, an_object):
-        if isinstance(self.variant, Typoid):
-            return self.variant.to_simple_data(an_object)
-        elif issubclass(self.variant, Bean):
-            return self.variant.to_simple_data(an_object)
-        else:
-            raise RuntimeError()
+        return self.variant.to_simple_data(an_object)
 
     def is_optional(self):
         return isinstance(self.variant, Optional)
