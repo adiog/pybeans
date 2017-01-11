@@ -9,7 +9,7 @@ import datetime
 from unittest import TestCase
 
 from pybeans import Int, String, Float, List, BeanRegister, register_atom, DateTime, \
-    register_bean_spec, Bean, register_bean_json
+    register_bean_spec, Bean, register_bean_json, MinimalBean
 
 
 class BeansTestCase(TestCase):
@@ -214,3 +214,12 @@ class BeansTestCase(TestCase):
         self.assertEqual(a_bean.a_str, None)
         self.assertEqual(a_bean.an_int, 541)
         self.assertEqual(a_bean.list_of_int, [1,3,7])
+
+
+    def test_minimal_bean_json(self):
+        @register_bean_json('beanspec.json', basepath='tests')
+        class SampleBean(MinimalBean):
+            pass
+
+        a_bean = SampleBean()
+        self.assertEqual(a_bean.a_str, None)

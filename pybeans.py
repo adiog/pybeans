@@ -76,7 +76,8 @@ class BeanRegister(object):
 
     @staticmethod
     def get(label):
-        return BeanRegister.fold_invoke(BeanRegister.split_to_list(label, []))
+        split_label = BeanRegister.split_to_list(label, [])
+        return BeanRegister.fold_invoke(split_label)
 
 
 def register_atom():
@@ -286,6 +287,10 @@ class Bean(Atomic):
 
     @classmethod
     def cast_spec_field(cls, field, field_spec, simple_data):
+        return cls.do_cast_spec_field(field, field_spec, simple_data)
+
+    @classmethod
+    def do_cast_spec_field(cls, field, field_spec, simple_data):
         if field in simple_data:
             return field_spec(simple_data[field])
         else:
@@ -311,3 +316,9 @@ class Bean(Atomic):
     def get_id(self):
         return self.__dict__['%s_id' % self.__class__.__name__]
 
+
+class MinimalBean(Bean):
+    @classmethod
+    def cast_spec_field(cls, field, field_spec, simple_data):
+        if not field_spec.is_default() or field in simple_data:
+            return cls.do_cast_spec_field(field, field_spec, simple_data)
