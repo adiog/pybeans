@@ -5,11 +5,10 @@ This file is a part of pybeans project.
 Copyright (c) 2017 Aleksander Gajewski <adiog@brainfuck.pl>,
 """
 
+import datetime
 from unittest import TestCase
 
-import datetime
-
-from pybeans.pybeans import Int, String, Float, List, Register, register_atom, DateTime, \
+from pybeans import Int, String, Float, List, BeanRegister, register_atom, DateTime, \
     register_bean_spec, Bean, register_bean_json
 
 
@@ -58,7 +57,7 @@ class BeansTestCase(TestCase):
         self.assertEqual(a_float_typoid.to_simple_data(a_float), 3.14)
 
     def test_list(self):
-        a_list_of_int = Register.get('List(Int)')
+        a_list_of_int = BeanRegister.get('List(Int)')
 
         self.assertEqual(a_list_of_int([1,2,3]), [1,2,3])
 

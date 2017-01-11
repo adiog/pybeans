@@ -17,8 +17,6 @@ class Atom(object):  # this class is created to highlight the difference in __ca
     def __init__(self, variant):
         if isinstance(variant, Typoid):
             self.variant = variant
-        elif isinstance(variant, Atom):
-            self.variant = variant
         elif issubclass(variant, Bean):
             self.variant = variant
         else:
@@ -50,11 +48,17 @@ class Atom(object):  # this class is created to highlight the difference in __ca
         return isinstance(self.variant, Default)
 
 
+class Atomic(object):
+    @classmethod
+    def as_atom(cls, *args):
+        return NotImplementedError()
+
+
 class RegisterError(Exception):
     pass
 
 
-class Register(object):
+class BeanRegister(object):
     atoms = {}
     specs = {}
 
@@ -62,8 +66,8 @@ class Register(object):
 
     @staticmethod
     def split_to_list(label, type_list):
-        if label in Register.atoms:
-            type_list.append(Register.atoms[label])
+        if label in BeanRegister.atoms:
+            type_list.append(BeanRegister.atoms[label])
             return type_list
         else:
             try:
@@ -74,34 +78,31 @@ class Register(object):
                 remaining_label = re.search(r'\((.*)\)', label).group(1)
             except:
                 raise RegisterError('Unknown atom in "%s" of expected form "...(atom)"' % label)
-            type_list.append(Register.atoms[a_type])
-            return Register.split_to_list(remaining_label, type_list)
+            type_list.append(BeanRegister.atoms[a_type])
+            return BeanRegister.split_to_list(remaining_label, type_list)
 
     @staticmethod
     def fold_invoke(type_list):
         if len(type_list) == 1:
-            atom = type_list[0]
-            if issubclass(atom, Bean):
-                return atom
-            else:
-                return atom()
+            atomic = type_list[0]
+            return atomic.as_atom()
         else:
-            return type_list[0](Atom(Register.fold_invoke(type_list[1:])))
+            return type_list[0].as_atom(BeanRegister.fold_invoke(type_list[1:]))
 
     @staticmethod
     def get(label):
-        return Atom(Register.fold_invoke(Register.split_to_list(label, [])))
+        return BeanRegister.fold_invoke(BeanRegister.split_to_list(label, []))
 
 
 def register_atom():
     def do_register_atom(atom_object):
-        Register.atoms[atom_object.__name__] = atom_object
+        BeanRegister.atoms[atom_object.__name__] = atom_object
         return atom_object
 
     return do_register_atom
 
 
-def register_bean_json(beanfile=None, basepath=Register.basepath):
+def register_bean_json(beanfile=None, basepath=BeanRegister.basepath):
     class RegisterBean(object):
         def __init__(self, beanfile, basepath):
             self.beanfile = beanfile
@@ -112,8 +113,8 @@ def register_bean_json(beanfile=None, basepath=Register.basepath):
                 self.beanfile = '%s/%s.json' % (self.basepath, bean_object.__name__)
             else:
                 self.beanfile = '%s/%s' % (self.basepath, beanfile)
-            Register.atoms[bean_object.__name__] = bean_object
-            Register.specs[bean_object.__name__] = {k: Register.get(v) for k, v in json.load(open(self.beanfile, 'r')).items()}
+            BeanRegister.atoms[bean_object.__name__] = bean_object
+            BeanRegister.specs[bean_object.__name__] = {k: BeanRegister.get(v) for k, v in json.load(open(self.beanfile, 'r')).items()}
             return bean_object
 
     return RegisterBean(beanfile, basepath)
@@ -125,14 +126,18 @@ def register_bean_spec(beanspec):
             self.beanspec = beanspec
 
         def __call__(self, bean_object):
-            Register.atoms[bean_object.__name__] = bean_object
-            Register.specs[bean_object.__name__] = {k: Register.get(v) for k, v in json.loads(self.beanspec).items()}
+            BeanRegister.atoms[bean_object.__name__] = bean_object
+            BeanRegister.specs[bean_object.__name__] = {k: BeanRegister.get(v) for k, v in json.loads(self.beanspec).items()}
             return bean_object
 
     return RegisterBean(beanspec)
 
 
-class Typoid(object):
+class Typoid(Atomic):
+    @classmethod
+    def as_atom(cls, *args):
+        return Atom(cls(*args))
+
     def __call__(self, simple_data):
         raise NotImplementedError()
 
@@ -240,6 +245,7 @@ class List(Typoid):
         return [self.element_type.to_simple_data(an_element) for an_element in a_list]
 
 
+@register_atom()
 class DateTime(Typoid):
     def __call__(self, datetime_simple_data):
         year = datetime_simple_data[0]
@@ -265,10 +271,14 @@ def isinstanceof(an_object, a_typoid):
         return isinstance(an_object, a_typoid)
 
 
-class Bean(object):
+class Bean(Atomic):
+    @classmethod
+    def as_atom(cls):
+        return Atom(cls)
+
     @classmethod
     def get_spec(cls):
-        return Register.specs[cls.__name__]
+        return BeanRegister.specs[cls.__name__]
 
     @classmethod
     def in_spec(cls, simple_data):
