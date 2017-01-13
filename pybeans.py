@@ -308,7 +308,11 @@ class DateTime(Typoid):
 
 
 def isinstanceof(an_object, a_typoid):
-    if isinstance(a_typoid, Typoid):
+    if isinstance(a_typoid, Atom):
+        return a_typoid.is_instance_of(an_object)
+    elif isinstance(a_typoid, Typoid):
+        return a_typoid.is_instance_of(an_object)
+    elif issubclass(a_typoid, Bean):
         return a_typoid.is_instance_of(an_object)
     else:
         return isinstance(an_object, a_typoid)
