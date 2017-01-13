@@ -13,7 +13,10 @@
 
             if (JSON.stringify(a)!=JSON.stringify(b))
             {
-                alert('fail');
+                console.log('assertEqual FAILED');
+                console.log(a);
+                console.log(b);
+                alert('assertEqual FAILED');
             }
         };
 
@@ -30,7 +33,9 @@
                     return;
                 }
             }
-            alert('fail');
+            console.log('assertThrow FAILED');
+            console.log(error);
+            alert('assertThrow FAILED');
         }
 
 
@@ -75,7 +80,7 @@
         // bean
         class SampleBean extends Bean
         {
-            get_default(field)
+            static get_runtime_default(field, field_spec)
             {
                 if (field == 'a_def_int')
                 {
@@ -118,8 +123,6 @@
 
         assertEqual(sample_bean.an_opt_int, null);
         assertEqual(sample_bean.a_list, [1,5,9]);
-
-        console.log(sample_minimal_bean);
 
 </script>
 </body>

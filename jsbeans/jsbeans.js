@@ -12,7 +12,11 @@ if (!Array.prototype.last){
 var isinstanceof =
 function(an_object, a_typoid)
 {
-    if (Typoid.prototype.isPrototypeOf(a_typoid))
+    if (Atom.prototype.isPrototypeOf(a_typoid))
+    {
+        return a_typoid.is_instance_of(an_object);
+    }
+    else if (Typoid.prototype.isPrototypeOf(a_typoid))
     {
         return a_typoid.is_instance_of(an_object);
     }
@@ -22,7 +26,7 @@ function(an_object, a_typoid)
     }
     else
     {
-        throw "RuntimeError()";
+        return an_object instanceof a_typoid;
     }
 };
 
@@ -65,6 +69,11 @@ class Atom
     {
         return (Default.prototype.isPrototypeOf(this.variant));
     }
+
+    get_default()
+    {
+        return this.variant.get_default();
+    }
 };
 
 class Atomic
@@ -79,6 +88,7 @@ var Register =
 {
     atoms: {},
     specs: {},
+    defaults: {},
 
     split_to_list:
     function(label, type_list)
@@ -149,11 +159,20 @@ function(bean_name, bean_class, bean_spec)
     register_atom(bean_name, bean_class);
     bean_json = JSON.parse(bean_spec);
     bean_dict = {}
+    bean_defaults = {};
     for (k in bean_json)
     {
-        bean_dict[k] = Register.get(bean_json[k]);
+        if (k === '__defaults__')
+        {
+            bean_defaults = bean_json[k];
+        }
+        else
+        {
+            bean_dict[k] = Register.get(bean_json[k]);
+        }
     }
     Register.specs[bean_class.name] = bean_dict;
+    Register.defaults[bean_class.name] = bean_defaults;
 };
 
 
@@ -168,17 +187,22 @@ class Typoid extends Atomic
 
     __call__(simple_data)
     {
-        alert('NotImplementedError()');
+        throw 'NotImplementedError()';
     }
 
     is_instance_of(an_object)
     {
-        alert('NotImplementedError()');
+        throw 'NotImplementedError()';
     }
 
     to_simple_data(an_object)
     {
-        alert('NotImplementedError()');
+        throw 'NotImplementedError()';
+    }
+
+    get_default()
+    {
+        throw 'NotImplementedError()';
     }
 }
 
@@ -187,7 +211,7 @@ class BaseType extends Typoid
 {
     is_instance_offunction(an_object)
     {
-        alert('NotImplementedError()');
+        throw 'NotImplementedError()';
     }
 
     __call__(an_object)
@@ -221,6 +245,11 @@ class Int extends BaseType
     {
         return Object.prototype.toString.call(an_object) === "[object Number]";
     }
+
+    get_default()
+    {
+        return 0;
+    }
 }
 register_atom("Int", Int);
 
@@ -230,6 +259,11 @@ class String extends BaseType
     is_instance_of(an_object)
     {
         return Object.prototype.toString.call(an_object) === "[object String]";
+    }
+
+    get_default()
+    {
+        return '';
     }
 }
 register_atom("String", String);
@@ -271,6 +305,11 @@ class Optional extends Typoid
             return this.element_type.to_simple_data(an_object);
         }
     }
+
+    get_default()
+    {
+        return null;
+    }
 }
 register_atom("Optional", Optional);
 
@@ -296,6 +335,11 @@ class Forward extends Typoid
     to_simple_data(an_object)
     {
         return this.element_type.to_simple_data(an_object);
+    }
+
+    get_default()
+    {
+        return this.element_type.get_default();
     }
 }
 register_atom("Optional", Optional);
@@ -332,6 +376,11 @@ class List extends Typoid
         let that = this;
         return a_list.map(function(an_element){return that.element_type.to_simple_data(an_element);});
     }
+
+    get_default()
+    {
+        return new Array();
+    }
 }
 register_atom("List", List);
 
@@ -343,19 +392,23 @@ class Bean extends Atomic
         return new Atom(this);
     }
 
-    static get_spec()
+    get_spec()
     {
         return Register.specs[this.constructor.name];
     }
 
-    static in_spec(simple_data)
+    static get_defaults()
     {
-        let spec = this.constructor.get_spec();
-
-        return true; //Object.keys(simple_data).every(function(field){return field in spec;});
+        return Register.defaults[this.name];
     }
 
-    static is_instance_of(cls, an_object)
+    in_spec(simple_data)
+    {
+        let spec = this.get_spec();
+        return Object.keys(simple_data).every(function(field){return field in spec;});
+    }
+
+    static is_instance_of(an_object)
     {
         let spec = this.constructor.get_spec();
 
@@ -374,7 +427,7 @@ class Bean extends Atomic
         return true;
     }
 
-    static to_simple_data(an_object)
+    to_simple_data(an_object)
     {
         let spec = this.constructor.get_spec();
         let simple_data = {};
@@ -387,7 +440,7 @@ class Bean extends Atomic
 
     cast_spec_dict(simple_data)
     {
-        var spec = this.constructor.get_spec();
+        var spec = this.get_spec();
         for(k in spec)
         {
             this.cast_spec_dict_assign_field(k, spec[k], simple_data);
@@ -413,7 +466,7 @@ class Bean extends Atomic
             }
             else if (field_spec.is_default())
             {
-                return this.constructor.get_default(field);
+                return this.constructor.get_field_default(field, field_spec);
             }
             else
             {
@@ -422,16 +475,40 @@ class Bean extends Atomic
         }
     }
 
-    static get_default(field)
+    static get_field_default(field, field_spec)
+    {
+        try
+        {
+            return this.get_runtime_default(field, field_spec);
+        }
+        catch (e)
+        {
+            return this.get_static_default(field, field_spec);
+        }
+    }
+
+    static get_runtime_default(field, field_spec)
     {
         throw "NotImplementedError()";
+    }
+
+    static get_static_default(field, field_spec)
+    {
+        if (field in this.get_defaults())
+        {
+            return field_spec.__call__(this.get_defaults()[field]);
+        }
+        else
+        {
+            return field_spec.get_default();
+        }
     }
 
     constructor(simple_data)
     {
         super();
 
-        if (this.constructor.in_spec(simple_data))
+        if (this.in_spec(simple_data))
         {
             this.cast_spec_dict(simple_data);
         }
