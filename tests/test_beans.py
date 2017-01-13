@@ -146,7 +146,7 @@ class BeansTestCase(TestCase):
         self.assertEqual(a_test_bean.an_int, None)
         self.assertEqual(a_test_bean.list_of_int, [1,2,3])
 
-    def test_bean_default(self):
+    def test_bean_default_runtime(self):
         @register_bean_spec('''
         {
             "an_int": "Default(Int)",
@@ -155,7 +155,7 @@ class BeansTestCase(TestCase):
         ''')
         class TestBean(Bean):
             @classmethod
-            def default(cls, field):
+            def get_runtime_default(cls, field, field_spec):
                 if field == 'an_int':
                     return 541
 
@@ -163,6 +163,38 @@ class BeansTestCase(TestCase):
 
         self.assertEqual(a_test_bean.an_int, 541)
         self.assertEqual(a_test_bean.list_of_int, [1,2,3])
+
+    def test_bean_default_static(self):
+        @register_bean_spec('''
+        {
+            "an_int": "Default(Int)",
+            "list_of_int": "List(Int)",
+            "__defaults__": {"an_int": 128}
+        }
+        ''')
+        class TestBean(Bean):
+            pass
+
+        a_test_bean = TestBean({'list_of_int': [1,2,3]})
+
+        self.assertEqual(a_test_bean.an_int, 128)
+        self.assertEqual(a_test_bean.list_of_int, [1,2,3])
+
+    def test_bean_default_empty(self):
+        @register_bean_spec('''
+        {
+            "an_int": "Default(Int)",
+            "list_of_int": "List(Int)"
+        }
+        ''')
+        class TestBean(Bean):
+            pass
+
+        a_test_bean = TestBean({'list_of_int': [1,2,3]})
+
+        self.assertEqual(a_test_bean.an_int, 0)
+        self.assertEqual(a_test_bean.list_of_int, [1,2,3])
+
 
     def test_bean_with_bean(self):
         @register_bean_spec('''
@@ -175,7 +207,7 @@ class BeansTestCase(TestCase):
         ''')
         class WrappedBean(Bean):
             @classmethod
-            def default(cls, field):
+            def get_runtime_default(cls, field, field_spec):
                 if field == "an_int":
                     return 541
                 if field == "list_of_int":
@@ -202,7 +234,7 @@ class BeansTestCase(TestCase):
         @register_bean_json('beanspec.json', basepath='tests')
         class SampleBean(Bean):
             @classmethod
-            def default(cls, field):
+            def get_runtime_default(cls, field, field_spec):
                 if field == "an_int":
                     return 541
                 if field == "list_of_int":

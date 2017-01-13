@@ -32,6 +32,9 @@ class Atom(object):
     def is_default(self):
         return isinstance(self.variant, Default)
 
+    def get_default(self):
+        return self.variant.get_default()
+
 
 class Atomic(object):
     @classmethod
@@ -46,6 +49,7 @@ class RegisterError(Exception):
 class BeanRegister(object):
     atoms = {}
     specs = {}
+    defaults = {}
 
     basepath = os.environ.get('PYBEANS_BASEPATH', '.')
 
@@ -79,6 +83,25 @@ class BeanRegister(object):
         split_label = BeanRegister.split_to_list(label, [])
         return BeanRegister.fold_invoke(split_label)
 
+    @staticmethod
+    def split_defaults(simple_data):
+        if '__defaults__' in simple_data:
+            simple_data_defaults = simple_data.pop('__defaults__')
+        else:
+            simple_data_defaults = {}
+        return simple_data, simple_data_defaults
+
+    @staticmethod
+    def register_bean(bean_name, bean_atom, bean_spec_with_defaults):
+        BeanRegister.atoms[bean_name] = bean_atom
+        bean_spec, bean_defaults = BeanRegister.split_defaults(bean_spec_with_defaults)
+        BeanRegister.specs[bean_name] = BeanRegister.get_bean_spec(bean_spec)
+        BeanRegister.defaults[bean_name] = bean_defaults
+
+    @classmethod
+    def get_bean_spec(cls, simple_data_spec):
+        return {k: BeanRegister.get(v) for k, v in simple_data_spec.items()}
+
 
 def register_atom():
     def do_register_atom(atom_object):
@@ -88,35 +111,45 @@ def register_atom():
     return do_register_atom
 
 
+def load_simple_data_from_text(text):
+    return json.loads(text)
+
+
+def load_simple_data_from_file(filename):
+    return json.load(open(filename, 'r'))
+
+
 def register_bean_json(beanfile=None, basepath=BeanRegister.basepath):
     class RegisterBean(object):
         def __init__(self, beanfile, basepath):
             self.beanfile = beanfile
             self.basepath = basepath
 
-        def __call__(self, bean_object):
+        def get_bean_spec_filename(self, bean_object):
             if self.beanfile is None:
-                self.beanfile = '%s/%s.json' % (self.basepath, bean_object.__name__)
+                return '%s/%s.json' % (self.basepath, bean_object.__name__)
             else:
-                self.beanfile = '%s/%s' % (self.basepath, beanfile)
-            BeanRegister.atoms[bean_object.__name__] = bean_object
-            BeanRegister.specs[bean_object.__name__] = {k: BeanRegister.get(v) for k, v in json.load(open(self.beanfile, 'r')).items()}
+                return '%s/%s' % (self.basepath, self.beanfile)
+
+        def __call__(self, bean_object):
+            simple_data_with_defaults = load_simple_data_from_file(self.get_bean_spec_filename(bean_object))
+            BeanRegister.register_bean(bean_object.__name__, bean_object, simple_data_with_defaults)
             return bean_object
+
 
     return RegisterBean(beanfile, basepath)
 
 
-def register_bean_spec(beanspec):
+def register_bean_spec(bean_text):
     class RegisterBean(object):
-        def __init__(self, beanspec):
-            self.beanspec = beanspec
+        def __init__(self, bean_text):
+            self.simple_data__with_defaults = load_simple_data_from_text(bean_text)
 
         def __call__(self, bean_object):
-            BeanRegister.atoms[bean_object.__name__] = bean_object
-            BeanRegister.specs[bean_object.__name__] = {k: BeanRegister.get(v) for k, v in json.loads(self.beanspec).items()}
+            BeanRegister.register_bean(bean_object.__name__, bean_object, self.simple_data__with_defaults)
             return bean_object
 
-    return RegisterBean(beanspec)
+    return RegisterBean(bean_text)
 
 
 class Typoid(Atomic):
@@ -132,6 +165,9 @@ class Typoid(Atomic):
 
     def to_simple_data(self, an_object):
         raise NotImplementedError()
+
+    def get_default(self):
+        raise NotImplementedError(self.__class__.__name__)
 
 
 class BaseType(Typoid):
@@ -156,17 +192,26 @@ class Int(BaseType):
     def is_instance_of(self, an_object):
         return isinstance(an_object, int)
 
+    def get_default(self):
+        return 0
+
 
 @register_atom()
 class Float(BaseType):
     def is_instance_of(self, an_object):
         return isinstance(an_object, float)
 
+    def get_default(self):
+        return 0.0
+
 
 @register_atom()
 class String(BaseType):
     def is_instance_of(self, an_object):
         return isinstance(an_object, str)
+
+    def get_default(self):
+        return ''
 
 
 @register_atom()
@@ -191,6 +236,9 @@ class Optional(Typoid):
         else:
             return self.element_type.to_simple_data(an_object)
 
+    def get_default(self):
+        return None
+
 
 @register_atom()
 class Forward(Typoid):
@@ -207,6 +255,9 @@ class Forward(Typoid):
 
     def to_simple_data(self, an_object):
         return self.element_type.to_simple_data(an_object)
+
+    def get_default(self):
+        return self.element_type.get_default()
 
 
 @register_atom()
@@ -230,6 +281,9 @@ class List(Typoid):
     def to_simple_data(self, a_list):
         return [self.element_type.to_simple_data(an_element) for an_element in a_list]
 
+    def get_default(self):
+        return []
+
 
 @register_atom()
 class DateTime(Typoid):
@@ -249,6 +303,9 @@ class DateTime(Typoid):
     def to_simple_data(self, an_object):
         return [an_object.year, an_object.month, an_object.day, an_object.hour, an_object.minute, an_object.second, an_object.microsecond]
 
+    def get_default(self):
+        return datetime.datetime.now()
+
 
 def isinstanceof(an_object, a_typoid):
     if isinstance(a_typoid, Typoid):
@@ -265,6 +322,10 @@ class Bean(Atomic):
     @classmethod
     def get_spec(cls):
         return BeanRegister.specs[cls.__name__]
+
+    @classmethod
+    def get_defaults(cls):
+        return BeanRegister.defaults[cls.__name__]
 
     @classmethod
     def in_spec(cls, simple_data):
@@ -297,13 +358,31 @@ class Bean(Atomic):
             if field_spec.is_optional():
                 return None
             elif field_spec.is_default():
-                return cls.default(field)
+                return cls.get_field_default(field, field_spec)
             else:
                 raise TypeError()
 
     @classmethod
-    def default(cls, field):
+    def get_field_default(cls, field, field_spec):
+        try:
+            return cls.get_runtime_default(field, field_spec)
+        except NotImplementedError:
+            return cls.get_static_default(field, field_spec)
+
+    @classmethod
+    def get_runtime_default(cls, field, field_spec):
         raise NotImplementedError()
+
+    @classmethod
+    def get_static_default(cls, field, field_spec):
+        if field in cls.get_defaults():
+            return field_spec(cls.get_defaults()[field])
+        else:
+            return field_spec.get_default()
+
+    @classmethod
+    def get_default(cls):
+        return cls({})
 
     def __init__(self, simple_data=None, **kwargs):
         if simple_data is None:
