@@ -4,11 +4,13 @@
 This file is a part of pybeans project.
 Copyright (c) 2017 Aleksander Gajewski <adiog@brainfuck.pl>.
 """
-
+import base64
 import json
 import os
 import re
 import datetime
+
+import binascii
 
 
 class Atom(object):
@@ -93,6 +95,7 @@ class BeanRegister(object):
 
     @staticmethod
     def register_bean(bean_name, bean_atom, bean_spec_with_defaults):
+        bean_atom.bean_id = re.sub(r'Table', '', bean_atom.__name__).lower() + '_id'
         BeanRegister.atoms[bean_name] = bean_atom
         bean_spec, bean_defaults = BeanRegister.split_defaults(bean_spec_with_defaults)
         BeanRegister.specs[bean_name] = BeanRegister.get_bean_spec(bean_spec)
@@ -135,7 +138,6 @@ def register_bean_json(beanfile=None, basepath=BeanRegister.basepath):
             simple_data_with_defaults = load_simple_data_from_file(self.get_bean_spec_filename(bean_object))
             BeanRegister.register_bean(bean_object.__name__, bean_object, simple_data_with_defaults)
             return bean_object
-
 
     return RegisterBean(beanfile, basepath)
 
@@ -212,6 +214,24 @@ class String(BaseType):
 
     def get_default(self):
         return ''
+
+
+@register_atom()
+class Id(Int):
+    pass
+
+
+@register_atom()
+class Base64(String):
+    def is_instance_of(self, an_object):
+        try:
+            base64.decodestring(an_object)
+            return True
+        except binascii.Error:
+            return False
+
+    def get_default(self):
+        return base64.b64encode('')
 
 
 @register_atom()
@@ -364,7 +384,7 @@ class Bean(Atomic):
             elif field_spec.is_default():
                 return cls.get_field_default(field, field_spec)
             else:
-                raise TypeError()
+                raise TypeError(field)
 
     @classmethod
     def get_field_default(cls, field, field_spec):
@@ -397,7 +417,7 @@ class Bean(Atomic):
             raise TypeError()
 
     def get_id(self):
-        return self.__dict__['%s_id' % self.__class__.__name__]
+        return self.__dict__[self.__class__.bean_id]
 
 
 class MinimalBean(Bean):
